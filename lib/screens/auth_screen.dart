@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 import '../widgets/auth/logo_animation.dart';
 import '../widgets/auth/auth_form.dart';
+import '../services/state_checker.dart';
+import '../screens/patient_home_screen.dart';
 
 class AuthScreen extends StatefulWidget {
   final String userType;
@@ -85,22 +89,90 @@ class _AuthScreenState extends State<AuthScreen>
       setState(() => _isLoading = true);
 
       try {
-        await Future.delayed(const Duration(seconds: 2));
-        debugPrint('Email: ${_emailController.text}');
-        debugPrint('Password: ${_passwordController.text}');
-        if (!_isLogin) {
-          debugPrint('Name: ${_nameController.text}');
+        final auth = FirebaseAuth.instance;
+        final stateChecker = Provider.of<StateChecker>(context, listen: false);
+
+        if (_isLogin) {
+          // Login existing user
+          await auth.signInWithEmailAndPassword(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+          );
+
+          // Save user type to shared preferences
+          await stateChecker.saveUserType(widget.userType);
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Login successful!'),
+                backgroundColor: Colors.green,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        } else {
+          // Create new user
+          final userCredential = await auth.createUserWithEmailAndPassword(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+          );
+
+          // Update user profile with name
+          await userCredential.user?.updateDisplayName(
+            _nameController.text.trim(),
+          );
+
+          // Save user type to shared preferences
+          await stateChecker.saveUserType(widget.userType);
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Account created successfully!'),
+                backgroundColor: Colors.green,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        }
+
+        // Add a delay and explicitly check auth state after login/signup
+        if (mounted) {
+          // Wait for 3 seconds to ensure Firebase Auth state is updated
+          await Future.delayed(const Duration(seconds: 3));
+
+          // Force check auth state
+          await stateChecker.checkAuthState();
+
+          // Navigate to home screen if still authenticated
+          if (stateChecker.authState == AuthState.authenticated) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                builder: (context) => const PatientHomeScreen(),
+              ),
+              (route) => false,
+            );
+          }
+        }
+      } on FirebaseAuthException catch (error) {
+        String errorMessage = 'Authentication failed';
+
+        if (error.code == 'user-not-found' || error.code == 'wrong-password') {
+          errorMessage = 'Invalid email or password';
+        } else if (error.code == 'email-already-in-use') {
+          errorMessage = 'This email is already registered';
+        } else if (error.code == 'weak-password') {
+          errorMessage = 'Password is too weak';
+        } else if (error.code == 'invalid-email') {
+          errorMessage = 'Invalid email address';
         }
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                _isLogin
-                    ? 'Login successful!'
-                    : 'Account created successfully!',
-              ),
-              backgroundColor: Colors.green,
+              content: Text(errorMessage),
+              backgroundColor: Colors.red,
               behavior: SnackBarBehavior.floating,
             ),
           );

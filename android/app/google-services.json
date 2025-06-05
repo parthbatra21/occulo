@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "798236006761",
+    "project_id": "occulo-e5725",
+    "storage_bucket": "occulo-e5725.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:798236006761:android:3879e9f8c392136b2fc5f8",
+        "android_client_info": {
+          "package_name": "com.example.ooculo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCxmhWHwlEty_Va6rjSazlYUdmHx4s5Lqk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
